@@ -7,7 +7,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="http://example.com/img/touxiang1.jpg">
 <meta property="article:published_time" content="2026-11-24T12:05:00.000Z">
-<meta property="article:modified_time" content="2026-11-24T11:52:10.293Z">
+<meta property="article:modified_time" content="2026-11-24T12:03:56.193Z">
 <meta property="article:author" content="浅陌无忧">
 <meta property="article:tag" content="WebGL">
 <meta property="article:tag" content="化学">
@@ -21,7 +21,7 @@
   "url": "http://example.com/2026/11/24/d%E8%BD%A8%E9%81%93%E7%9A%84%E4%B8%89%E7%BB%B4%E5%8F%AF%E8%A7%86%E5%8C%96/",
   "image": "http://example.com/img/touxiang1.jpg",
   "datePublished": "2026-11-24T12:05:00.000Z",
-  "dateModified": "2026-11-24T11:52:10.293Z",
+  "dateModified": "2026-11-24T12:03:56.193Z",
   "author": [
     {
       "@type": "Person",
@@ -204,25 +204,31 @@
   isHighlightShrink: false,
   isToc: true,
   pageType: 'post'
-}</script><meta name="generator" content="Hexo 8.1.2"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">My Blog</span></a><a class="nav-page-title" href="/"><span class="site-name">把 d 轨道转起来：三个能自己动手的 3D 演示</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  Back to Home</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">把 d 轨道转起来：三个能自己动手的 3D 演示</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">Created</span><time class="post-meta-date-created" datetime="2026-11-24T12:05:00.000Z" title="Created 2026-11-24 20:05:00">2026-11-24</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">Updated</span><time class="post-meta-date-updated" datetime="2026-11-24T11:52:10.293Z" title="Updated 2026-11-24 19:52:10">2026-11-24</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">Post Views:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>结构化学里讲 d 轨道，最难受的是纸上那几张图：五个形状长得差不多，方向却各不相同，老师一句”这个沿 xy 平面、那个沿对角线”，全靠脑子转。可脑子转三维，转不过电脑。</p>
+}</script><meta name="generator" content="Hexo 8.1.2"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">My Blog</span></a><a class="nav-page-title" href="/"><span class="site-name">把 d 轨道转起来：三个能自己动手的 3D 演示</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  Back to Home</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">把 d 轨道转起来：三个能自己动手的 3D 演示</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">Created</span><time class="post-meta-date-created" datetime="2026-11-24T12:05:00.000Z" title="Created 2026-11-24 20:05:00">2026-11-24</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">Updated</span><time class="post-meta-date-updated" datetime="2026-11-24T12:03:56.193Z" title="Updated 2026-11-24 20:03:56">2026-11-24</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">Post Views:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>结构化学里讲 d 轨道，最难受的是纸上那几张图：五个形状长得差不多，方向却各不相同，老师一句”这个沿 xy 平面、那个沿对角线”，全靠脑子转。可脑子转三维，转不过电脑。</p>
 <p>所以我做了三个能直接上手转的演示。它们不是画出来的示意图，而是<strong>每一帧都按球谐函数现算的等值面</strong>——五个轨道、波函数的正负相位、σ&#x2F;π&#x2F;δ 三种重叠，都是算出来的。</p>
 <span id="more"></span>
 
-<h2 id="一、五个-d-轨道，想看哪个点哪个"><a href="#一、五个-d-轨道，想看哪个点哪个" class="headerlink" title="一、五个 d 轨道，想看哪个点哪个"></a>一、五个 d 轨道，想看哪个点哪个</h2><p><img src="/d-orbital/assets/shapes.jpg" alt="五个 d 轨道"></p>
+<h2 id="一、五个-d-轨道，想看哪个点哪个"><a href="#一、五个-d-轨道，想看哪个点哪个" class="headerlink" title="一、五个 d 轨道，想看哪个点哪个"></a>一、五个 d 轨道，想看哪个点哪个</h2><a href="/d-orbital/shapes.html" target="_blank" rel="noopener">
+  <img src="/d-orbital/assets/shapes.jpg" alt="五个 d 轨道" style="border-radius:12px;cursor:zoom-in">
+</a>
+
+<p><small>👆 点上面这张图打开演示（新标签页）</small></p>
 <p>红蓝是波函数的正负相位（ψ &gt; 0 &#x2F; ψ &lt; 0），不是”电子多”和”电子少”。相邻的瓣正负交替，这一点在讲成键的时候特别关键。</p>
 <p>最有用的是<strong>可以自由勾选叠加</strong>：点 d_xy 再点 d_x²−y²，两个轨道就叠在同一个空间里，45° 的取向差一眼就看出来了。</p>
 <p>还有个细节值得玩一下：把五个轨道<strong>全部叠上</strong>，会变成一团彩球。这不是渲染出错——五个 d 轨道填满时 Σ|ψ|² 与方向无关，本来就接近球形，这也正是”全充满的 d 亚层是球对称”的来由。</p>
-<p>👉 <a href="/d-orbital/shapes.html">打开演示：五个 d 轨道</a></p>
-<h2 id="二、面对面成键：δ-键"><a href="#二、面对面成键：δ-键" class="headerlink" title="二、面对面成键：δ 键"></a>二、面对面成键：δ 键</h2><p><img src="/d-orbital/assets/delta.jpg" alt="δ 键"></p>
+<h2 id="二、面对面成键：δ-键"><a href="#二、面对面成键：δ-键" class="headerlink" title="二、面对面成键：δ 键"></a>二、面对面成键：δ 键</h2><a href="/d-orbital/delta.html" target="_blank" rel="noopener">
+  <img src="/d-orbital/assets/delta.jpg" alt="δ 键" style="border-radius:12px;cursor:zoom-in">
+</a>
+
+<p><small>👆 点上面这张图打开演示（新标签页）</small></p>
 <p>两个 d_xy 平行靠近，四对同号瓣正面对上，接成四根贯穿两个原子核的”桥”——这就是 δ 键。它的标志是<strong>沿键轴有两个节面</strong>（xz 和 yz 平面），这也是 δ 和 σ、π 的分界。</p>
 <p>页面里可以拖键长、拖轨道尺度，右上角实时给出重叠积分 S。换成”反键”组合，键中点会多出一个节面，相位在中间翻一次——这个对比比任何静态图都直观。</p>
-<p>👉 <a href="/d-orbital/delta.html">打开演示：δ 键</a></p>
-<h2 id="三、σ-π-δ-三种重叠，带时间轴"><a href="#三、σ-π-δ-三种重叠，带时间轴" class="headerlink" title="三、σ &#x2F; π &#x2F; δ 三种重叠，带时间轴"></a>三、σ &#x2F; π &#x2F; δ 三种重叠，带时间轴</h2><p>下面这个可以直接在文章里玩（建议用电脑、用 Edge 或 Chrome 打开）：</p>
+<h2 id="三、σ-π-δ-三种重叠，带时间轴"><a href="#三、σ-π-δ-三种重叠，带时间轴" class="headerlink" title="三、σ &#x2F; π &#x2F; δ 三种重叠，带时间轴"></a>三、σ &#x2F; π &#x2F; δ 三种重叠，带时间轴</h2><p>下面这个是直接嵌在文章里的，可以在页面上直接玩（建议用电脑、用 Edge 或 Chrome 打开）：</p>
 <iframe src="/d-orbital/overlap.html" style="width:100%;height:580px;border:1px solid #232838;border-radius:12px;background:#0a0c11" loading="lazy"></iframe>
 
 <p>五个轨道全部可选，亮点是底部那条<strong>可拖动的时间轴</strong>：核间距从 20 a₀ 一路收到 5 a₀，你能亲眼看见两个轨道从各自独立，到波瓣开始交叠，最后接合成键的全过程。</p>
 <p>拖动时注意看三个面板的差别——d_z² 是头对头（σ），d_xz 是肩并肩（π），d_xy 是面对面（δ）。同样的距离下，它们的重叠区形状完全不一样。</p>
-<p>👉 <a href="/d-orbital/overlap.html">打开全屏版：σ &#x2F; π &#x2F; δ</a></p>
+<p>嵌入的窗口比较窄，想看完整版可以 <a href="/d-orbital/overlap.html" target="_blank" rel="noopener">全屏打开 σ &#x2F; π &#x2F; δ</a>。</p>
 <p>如果你想要一张能贴进作业的图，每个页面右下角都有「保存 PNG」，导出的就是当前视角的高清图。</p>
 <h2 id="一点技术说明"><a href="#一点技术说明" class="headerlink" title="一点技术说明"></a>一点技术说明</h2><ul>
 <li>用的是氢原子 3d 实轨道：径向部分 ∝ r²e^(−r&#x2F;3)，角向是实球谐函数；等值面取 |ψ| 为定值。</li>
