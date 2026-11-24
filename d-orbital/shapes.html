@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>d 轨道三维形状 · 伸展方向</title>
+<style>
+  :root{
+    --bg:#0a0c11;
+    --panel:#12151d;
+    --line:#232838;
+    --text:#e8edf7;
+    --dim:#8d99b0;
+    --accent:#6ea8fe;
+    --pos:#ff6b5e;
+    --neg:#5b93ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden}
+  #app{display:flex;height:100%}
+  #stage{position:relative;flex:1;min-width:0;cursor:grab}
+  #stage.dragging{cursor:grabbing}
+  #gl,#ov{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #ov{pointer-events:none}
+
+  #ui{width:326px;flex:0 0 326px;background:var(--panel);border-left:1px solid var(--line);
+    padding:22px 20px 18px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+  #ui h1{font-size:17px;margin:0 0 2px;font-weight:600;letter-spacing:.02em}
+  #ui .sub{font-size:12px;color:var(--dim);line-height:1.55;margin:0}
+
+  .group{display:flex;flex-direction:column;gap:8px}
+  .group-label{font-size:11px;letter-spacing:.09em;color:var(--dim);text-transform:uppercase}
+  .pills{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .selhint{font-size:11.5px;color:#6d788e;padding-left:2px}
+  .pill{appearance:none;border:1px solid var(--line);background:#181c26;color:var(--text);
+    border-radius:9px;padding:9px 6px;font-size:13px;cursor:pointer;transition:.15s;
+    font-family:inherit;line-height:1.1}
+  .pill:hover{background:#1e2431;border-color:#2f3651}
+  .pill.on{background:rgba(110,168,254,.14);border-color:rgba(110,168,254,.65);color:#cfe1ff}
+  .pill.wide{grid-column:1/-1}
+  .pill small{display:block;font-size:10.5px;color:var(--dim);margin-top:3px;font-weight:400}
+  .pill.on small{color:#9dbdf0}
+
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;color:#c3ccdd}
+  input[type=range]{-webkit-appearance:none;width:100%;height:22px;background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
+    background:linear-gradient(90deg,#3d4a68,#6ea8fe)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+    background:#dce7ff;border:2px solid #4a6ea8;margin-top:-5.5px;box-shadow:0 0 8px rgba(110,168,254,.5)}
+  .val{font-variant-numeric:tabular-nums;color:#9fb4d8;font-size:12px;min-width:44px;text-align:right}
+
+  .switch{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#c3ccdd;
+    cursor:pointer;user-select:none;padding:2px 0}
+  .switch .track{width:38px;height:21px;border-radius:11px;background:#2a3042;position:relative;transition:.18s;flex:0 0 auto}
+  .switch .track::after{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;
+    background:#8f9bb3;transition:.18s}
+  .switch.on .track{background:rgba(110,168,254,.42)}
+  .switch.on .track::after{left:20px;background:#dbe8ff}
+
+  .legend{display:flex;gap:14px;font-size:12px;color:#a9b5c9;align-items:center}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px}
+  .dot.p{background:var(--pos);box-shadow:0 0 9px rgba(255,107,94,.65)}
+  .dot.n{background:var(--neg);box-shadow:0 0 9px rgba(91,147,255,.65)}
+
+  .btns{display:flex;gap:7px}
+  .btn{flex:1;appearance:none;border:1px solid var(--line);background:#181c26;color:#cfd8e8;
+    border-radius:9px;padding:9px 8px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn:hover{background:#1e2431;border-color:#313a55}
+  .btn.primary{background:rgba(110,168,254,.16);border-color:rgba(110,168,254,.55);color:#d5e5ff}
+
+  .hint{font-size:11.5px;color:#6d788e;line-height:1.7;margin-top:auto}
+  .hint kbd{background:#1c2230;border:1px solid #2a3145;border-radius:4px;padding:0 4px;font-size:10.5px;
+    font-family:inherit;color:#9aa7bf}
+  #status{font-size:11px;color:#5f6b80;min-height:14px}
+
+  body.export #ui{display:none}
+  body.export #stage{cursor:default}
+  @media (max-width:820px){
+    #app{flex-direction:column}
+    #ui{width:auto;flex:0 0 auto;max-height:44vh;border-left:0;border-top:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="gl"></canvas>
+    <canvas id="ov"></canvas>
+  </div>
+  <aside id="ui">
+    <div>
+      <h1>d 轨道三维形状</h1>
+      <p class="sub">氢原子 3d 实轨道等值面 · 由球谐函数实时计算</p>
+    </div>
+
+    <div class="group">
+      <div class="group-label">选择轨道</div>
+      <div class="pills" id="orbBtns"></div>
+      <div class="selhint" id="selHint">点击轨道查看单个 / 叠加</div>
+    </div>
+
+    <div class="group">
+      <div class="row"><span>电子云范围</span><span class="val" id="isoVal">0.36</span></div>
+      <input type="range" id="iso" min="8" max="62" value="36">
+    </div>
+
+    <div class="group">
+      <div class="switch" id="swPhase"><span>相位配色（红 ψ&gt;0 / 蓝 ψ&lt;0）</span><span class="track"></span></div>
+      <div class="switch" id="swAxes"><span>显示 x / y / z 坐标轴</span><span class="track"></span></div>
+      <div class="switch" id="swAuto"><span>自动旋转</span><span class="track"></span></div>
+    </div>
+
+    <div class="legend">
+      <span><i class="dot p"></i>ψ &gt; 0</span>
+      <span><i class="dot n"></i>ψ &lt; 0</span>
+    </div>
+
+    <div class="group">
+      <div class="group-label">视角</div>
+      <div class="btns">
+        <button class="btn" data-view="obl">斜视</button>
+        <button class="btn" data-view="z">沿 z 看</button>
+        <button class="btn" data-view="x">沿 x 看</button>
+        <button class="btn" data-view="reset">复位</button>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn primary" id="save">保存 PNG</button>
+    </div>
+    <div id="status"></div>
+
+    <div class="hint">
+      拖拽旋转 · 滚轮缩放 · <kbd>1</kbd>–<kbd>5</kbd> 切换轨道 · <kbd>G</kbd> 全览 · <kbd>空格</kbd> 自动旋转
+    </div>
+  </aside>
+</div>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ *  轨道定义
+ *  实球谐函数 l = 2：
+ *    Y20  = 0.3154 (3z²−r²)/r²          → d z²
+ *    Y21c = 1.0925 xz/r²                → d xz
+ *    Y21s = 1.0925 yz/r²                → d yz
+ *    Y22c = 0.5463 (x²−y²)/r²           → d x²−y²
+ *    Y22s = 0.5463 (2xy)/r²             → d xy
+ *  径向部分（3d，a0 = 1）：R ∝ r² e^(−r/3)
+ * ------------------------------------------------------------------ */
+const A20 = 0.31539156525, A21 = 0.54627421529, A22 = 0.54627421529;
+const PEAK = A20 * 2 * 36 * Math.exp(-2);   // dz² 沿 z 轴的最大值 ≈ 3.0736
+
+const ORBS = [
+  { sub:"z²",    A:2 * A20, short:"双瓣 ＋ 腰环",
+    desc:"两个大瓣沿 ±z 轴，腰部一个环形电子云",
+    nodal:"节面：θ ≈ 54.7° 与 125.3° 的两个圆锥面" },
+  { sub:"x²−y²", A:A22, short:"沿 x、y 轴四瓣",
+    desc:"四瓣沿 ±x、±y 轴，全部位于 xy 平面内",
+    nodal:"节面：x = ±y 两个竖直平面" },
+  { sub:"xy",    A:A22, short:"xy 平面对角四瓣",
+    desc:"四瓣位于 xy 平面内，沿 45° 对角线（x = ±y）伸展",
+    nodal:"节面：xz 平面、yz 平面" },
+  { sub:"xz",    A:A21, short:"xz 平面对角四瓣",
+    desc:"四瓣位于 xz 平面内，沿 x = ±z 对角线伸展",
+    nodal:"节面：xy 平面、yz 平面" },
+  { sub:"yz",    A:A21, short:"yz 平面对角四瓣",
+    desc:"四瓣位于 yz 平面内，沿 y = ±z 对角线伸展",
+    nodal:"节面：xy 平面、xz 平面" },
+];
+
+/* 叠加对比时每个轨道的专属配色（正相位亮 / 负相位暗） */
+const PALETTE = [
+  { p: [1.00, 0.56, 0.22], n: [0.40, 0.22, 0.09] },   // d z²  橙
+  { p: [0.30, 0.72, 1.00], n: [0.11, 0.29, 0.43] },   // d x²−y² 青
+  { p: [0.40, 0.86, 0.52], n: [0.15, 0.36, 0.21] },   // d xy  绿
+  { p: [0.74, 0.56, 1.00], n: [0.30, 0.22, 0.43] },   // d xz  紫
+  { p: [1.00, 0.84, 0.34], n: [0.41, 0.34, 0.13] },   // d yz  黄
+];
+const PHASE_P = [1.00, 0.38, 0.32], PHASE_N = [0.34, 0.58, 1.00];
+const MONO_P = [0.62, 0.75, 0.94], MONO_N = [0.40, 0.49, 0.62];
+
+/* ------------------------------------------------------------------ *
+ *  状态
+ * ------------------------------------------------------------------ */
+const params = new URLSearchParams(location.search);
+const EXPORT = params.get("export") === "1";
+const FOV = 30 * Math.PI / 180;
+
+const state = {
+  orb: "grid",     // "grid" 或 "orb"（叠加/单个视图）
+  sel: [0],        // 当前显示的轨道（可多个，叠加对比）
+  iso: 0.36,       // 等值面，相对全局峰值
+  phase: true,
+  axes: true,
+  auto: true,
+  yaw: 1.0,
+  pitch: 0.30,
+  zoom: 1,
+};
+
+/* ------------------------------------------------------------------ *
+ *  WebGL
+ * ------------------------------------------------------------------ */
+const stage = document.getElementById("stage");
+const glc = document.getElementById("gl");
+const ovc = document.getElementById("ov");
+const ctx = ovc.getContext("2d");
+
+const gl = glc.getContext("webgl2", {
+  antialias: true, alpha: false, depth: false, stencil: false,
+  preserveDrawingBuffer: true, powerPreference: "high-performance",
+});
+if (!gl) {
+  stage.innerHTML = '<div style="color:#fff;padding:40px;font-size:15px">' +
+    "这个浏览器不支持 WebGL2，请用新版 Edge / Chrome 打开。</div>";
+  throw new Error("no webgl2");
+}
+
+const VS = `#version 300 es
+in vec2 aPos;
+void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`;
+
+const FS = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+
+uniform vec2  uRes;
+uniform vec2  uOrigin;    // 当前面板在画布中的左下角像素坐标
+uniform mat3  uCam;       // 列向量：right, up, forward
+uniform vec3  uCamPos;
+uniform float uFocal;
+uniform float uC;         // 等值面（已除以峰值）
+uniform float uPeak;
+uniform int   uAxes;
+uniform float uAxisLen;
+uniform float uBound;
+
+uniform int   uN;         // 同时显示的轨道数
+uniform int   uOrbs[5];   // 槽位 → 轨道编号
+uniform vec3  uColP[5];   // ψ>0 的颜色
+uniform vec3  uColN[5];   // ψ<0 的颜色
+uniform float uAlpha;     // 叠加透明度
+
+const float A20 = 0.31539156525;
+const float A21 = 0.54627421529;
+const float A22 = 0.54627421529;
+const int   STEPS = 120;
+
+float angY(vec3 d, int orb){
+  if (orb == 0) return A20 * (3.0 * d.z * d.z - 1.0);
+  if (orb == 1) return A22 * (d.x * d.x - d.y * d.y);
+  if (orb == 2) return A22 * 2.0 * d.x * d.y;
+  if (orb == 3) return A21 * 2.0 * d.x * d.z;
+  return A21 * 2.0 * d.y * d.z;
+}
+
+// 波函数（3d 径向 × 实球谐），已用峰值归一化
+float psiOrb(vec3 p, int orb){
+  float r2 = dot(p, p);
+  float r  = sqrt(r2);
+  vec3  d  = p / max(r, 1e-6);
+  return r2 * exp(-r * 0.3333333333) * angY(d, orb) / uPeak;
+}
+
+float fieldOrb(vec3 p, int orb){ return abs(psiOrb(p, orb)) - uC; }
+
+bool sphereIn(vec3 ro, vec3 rd, float R, out float t0, out float t1){
+  float b = dot(ro, rd);
+  float c = dot(ro, ro) - R * R;
+  float h = b * b - c;
+  if (h < 0.0){ t0 = 0.0; t1 = 0.0; return false; }
+  h = sqrt(h);
+  t0 = -b - h;
+  t1 = -b + h;
+  return t1 > 0.0;
+}
+
+// 返回首次穿越 |ψ| = c 的距离；sgn 为该处 ψ 的符号
+float traceOrb(vec3 ro, vec3 rd, int orb, out float sgn){
+  sgn = 0.0;
+  float t0, t1;
+  if (!sphereIn(ro, rd, uBound, t0, t1)) return -1.0;
+  t0 = max(t0, 0.0);
+  float dt = (t1 - t0) / float(STEPS);
+  float tp = t0;
+  float fp = fieldOrb(ro + rd * t0, orb);
+  for (int i = 1; i <= STEPS; i++){
+    float tc = t0 + dt * float(i);
+    float fc = fieldOrb(ro + rd * tc, orb);
+    if (fc > 0.0 && fp <= 0.0){
+      float a = tp, b = tc;
+      for (int k = 0; k < 6; k++){
+        float m = 0.5 * (a + b);
+        if (fieldOrb(ro + rd * m, orb) > 0.0) b = m; else a = m;
+      }
+      float th = 0.5 * (a + b);
+      sgn = psiOrb(ro + rd * th, orb);
+      return th;
+    }
+    tp = tc; fp = fc;
+  }
+  return -1.0;
+}
+
+vec3 shadeSurface(vec3 p, vec3 rd, float sgn, int orb, vec3 colP, vec3 colN){
+  float e = uBound * 0.0030;
+  vec3 g = vec3(
+    psiOrb(p + vec3(e, 0.0, 0.0), orb) - psiOrb(p - vec3(e, 0.0, 0.0), orb),
+    psiOrb(p + vec3(0.0, e, 0.0), orb) - psiOrb(p - vec3(0.0, e, 0.0), orb),
+    psiOrb(p + vec3(0.0, 0.0, e), orb) - psiOrb(p - vec3(0.0, 0.0, e), orb)
+  );
+  vec3 n = (length(g) > 1e-14) ? normalize(g) : vec3(0.0, 0.0, 1.0);
+  n = -sign(sgn) * n;              // 外法线
+
+  vec3 L1 = normalize(vec3(-0.34, 0.74, 0.58));
+  vec3 L2 = normalize(vec3(0.72, -0.18, 0.32));
+  float d1 = max(dot(n, L1), 0.0);
+  float d2 = max(dot(n, L2), 0.0);
+  float amb = 0.52 + 0.26 * (0.5 + 0.5 * n.y);
+
+  vec3 base = (sgn > 0.0) ? colP : colN;
+
+  vec3 col = base * (amb + 0.72 * d1 + 0.20 * d2);
+
+  vec3 hv = normalize(L1 - rd);
+  col += vec3(0.92, 0.96, 1.0) * pow(max(dot(n, hv), 0.0), 52.0) * 0.22;
+
+  float rim = pow(1.0 - clamp(dot(n, -rd), 0.0, 1.0), 3.6);
+  col += base * rim * (0.42 + (1.0 - uAlpha) * 1.10);   // 半透明时强化轮廓，像玻璃壳
+
+  // 边缘轻微压暗，增加体积感
+  float edge = pow(1.0 - abs(dot(n, L1)), 2.0);
+  col *= 1.0 - 0.22 * edge;
+  return col;
+}
+
+bool cylAxis(vec3 ro, vec3 rd, int ax, float L, float rad, out float tOut, out vec3 nOut){
+  vec2 oc, dc; float oa, da;
+  if (ax == 0){ oc = ro.yz; dc = rd.yz; oa = ro.x; da = rd.x; }
+  else if (ax == 1){ oc = ro.xz; dc = rd.xz; oa = ro.y; da = rd.y; }
+  else { oc = ro.xy; dc = rd.xy; oa = ro.z; da = rd.z; }
+  float A = dot(dc, dc);
+  if (A < 1e-9) return false;
+  float B = 2.0 * dot(oc, dc);
+  float C = dot(oc, oc) - rad * rad;
+  float disc = B * B - 4.0 * A * C;
+  if (disc < 0.0) return false;
+  float sq = sqrt(disc);
+  float ts0 = (-B - sq) / (2.0 * A);
+  float ts1 = (-B + sq) / (2.0 * A);
+  for (int k = 0; k < 2; k++){
+    float t = (k == 0) ? ts0 : ts1;
+    if (t > 0.0){
+      float a = oa + da * t;
+      if (abs(a) <= L){
+        vec3 p = ro + rd * t;
+        vec3 dd = p; if (ax == 0) dd.x = 0.0; else if (ax == 1) dd.y = 0.0; else dd.z = 0.0;
+        nOut = normalize(dd + vec3(1e-9));
+        tOut = t;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void main(){
+  vec2 fc = gl_FragCoord.xy - uOrigin;
+  vec3 rd = normalize(uCam * vec3((fc - 0.5 * uRes) / uFocal, 1.0));
+  vec3 ro = uCamPos;
+
+  vec2 q = fc / uRes;
+  float rr = length(q - vec2(0.5));
+  vec3 bg = mix(vec3(0.068, 0.076, 0.098), vec3(0.014, 0.017, 0.025), smoothstep(0.10, 0.92, rr));
+  bg += vec3(0.018, 0.026, 0.042) * pow(max(0.0, 1.0 - rr * 1.55), 2.2);
+
+  float ts[5]; float sg[5]; int sl[5]; int n = 0;
+  for (int i = 0; i < 5; i++){
+    if (i < uN){
+      float s;
+      float t = traceOrb(ro, rd, uOrbs[i], s);
+      if (t > 0.0){ ts[n] = t; sg[n] = s; sl[n] = i; n++; }
+    }
+  }
+  // 由近到远插入排序
+  for (int a = 1; a < n; a++){
+    float kt = ts[a]; float ks = sg[a]; int ki = sl[a];
+    int b = a - 1;
+    while (b >= 0 && ts[b] > kt){
+      ts[b + 1] = ts[b]; sg[b + 1] = sg[b]; sl[b + 1] = sl[b];
+      b--;
+    }
+    ts[b + 1] = kt; sg[b + 1] = ks; sl[b + 1] = ki;
+  }
+
+  vec3 col = bg;
+  for (int k = n - 1; k >= 0; k--){
+    vec3 c = shadeSurface(ro + rd * ts[k], rd, sg[k], uOrbs[sl[k]], uColP[sl[k]], uColN[sl[k]]);
+    col = mix(col, c, uAlpha);
+  }
+
+  if (uAxes == 1){
+    float ta = -1.0; vec3 na = vec3(0.0); int hit = 0;
+    for (int i = 0; i < 3; i++){
+      float tt; vec3 nn;
+      if (cylAxis(ro, rd, i, uAxisLen, uAxisLen * 0.0072, tt, nn)){
+        if (hit == 0 || tt < ta){ ta = tt; na = nn; hit = 1; }
+      }
+    }
+    if (hit == 1 && (n == 0 || ta < ts[0])){
+      vec3 L = normalize(vec3(-0.35, 0.72, 0.60));
+      float df = 0.34 + 0.66 * max(dot(na, L), 0.0);
+      col = vec3(0.62, 0.68, 0.80) * df + vec3(0.10) * pow(1.0 - abs(dot(na, rd)), 2.0);
+    }
+  }
+
+  fragColor = vec4(col, 1.0);
+}`;
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(s) || "shader error");
+  }
+  return s;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, "aPos");
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+const U = {};
+for (const n of ["uRes","uOrigin","uCam","uCamPos","uFocal","uC","uPeak",
+                 "uAxes","uAxisLen","uBound","uN","uOrbs","uColP","uColN","uAlpha"]) {
+  U[n] = gl.getUniformLocation(prog, n);
+}
+
+/* ------------------------------------------------------------------ *
+ *  尺寸 / 布局
+ * ------------------------------------------------------------------ */
+let W = 0, H = 0, dirty = true;
+
+function resize() {
+  if (EXPORT) return;
+  const r = stage.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(360, Math.round(r.width * dpr));
+  H = Math.max(280, Math.round(r.height * dpr));
+  glc.width = W; glc.height = H;
+  ovc.width = W; ovc.height = H;
+  dirty = true;
+}
+
+function layoutPanels() {
+  if (state.orb !== "grid") return [{ x:0, y:0, w:W, h:H, orb:null }];
+  const g = Math.round(Math.min(W, H) * 0.017);
+  const capH = Math.round(Math.min(W, H) * 0.055);   // 底部图注留白
+  const s = Math.floor(Math.min((W - 4 * g) / 3, (H - capH - 3 * g) / 2));
+  const x0 = Math.round((W - (3 * s + 2 * g)) / 2);
+  const y0 = Math.round((H - capH - (2 * s + g)) / 2);
+  const out = [];
+  for (let i = 0; i < 3; i++) out.push({ x: x0 + i * (s + g), y: y0, w: s, h: s, orb: i });
+  const x1 = Math.round((W - (2 * s + g)) / 2);
+  for (let i = 0; i < 2; i++) out.push({ x: x1 + i * (s + g), y: y0 + s + g, w: s, h: s, orb: 3 + i });
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ *  几何辅助
+ * ------------------------------------------------------------------ */
+function rmaxFor(orb, c) {
+  const A = ORBS[orb].A;
+  let lo = 6, hi = 95;
+  for (let i = 0; i < 70; i++) {
+    const m = 0.5 * (lo + hi);
+    const v = A * m * m * Math.exp(-m / 3) / PEAK;
+    if (v > c) lo = m; else hi = m;
+  }
+  return 0.5 * (lo + hi);
+}
+
+function fitDist(rmax, w, h, k) {
+  const R = rmax * (k || 1.32);          // 留出坐标轴与轴字母的位置
+  const focal = 0.5 * h / Math.tan(FOV / 2);
+  const halfV = Math.atan(0.5 * h / focal);
+  const halfH = Math.atan(0.5 * w / focal);
+  const half = Math.min(halfV, halfH);
+  return R / Math.sin(half * 0.88);
+}
+
+const nrm = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0]/l, v[1]/l, v[2]/l]; };
+const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+
+function camera(dist) {
+  const cp = Math.cos(state.pitch), sp = Math.sin(state.pitch);
+  const pos = [dist * cp * Math.sin(state.yaw), dist * sp, dist * cp * Math.cos(state.yaw)];
+  const fwd = nrm([-pos[0], -pos[1], -pos[2]]);
+  let right = nrm(cross(fwd, [0, 1, 0]));
+  if (!isFinite(right[0]) || (right[0] === 0 && right[1] === 0 && right[2] === 0)) right = [1, 0, 0];
+  const up = cross(right, fwd);
+  return { pos, right, up, fwd };
+}
+
+/* ------------------------------------------------------------------ *
+ *  渲染
+ * ------------------------------------------------------------------ */
+const FONT = '"Microsoft YaHei","PingFang SC",system-ui,sans-serif';
+
+function render() {
+  const panels = layoutPanels();
+  const c = state.iso;
+  const isGrid = state.orb === "grid";
+
+  // 统一取景尺度（全览用最大轨道）
+  let rmaxCommon = 0;
+  for (let i = 0; i < 5; i++) rmaxCommon = Math.max(rmaxCommon, rmaxFor(i, c));
+
+  gl.disable(gl.SCISSOR_TEST);
+  gl.viewport(0, 0, W, H);
+  gl.clearColor(0.02, 0.024, 0.033, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.enable(gl.SCISSOR_TEST);
+  gl.uniform1f(U.uPeak, PEAK);
+  gl.uniform1f(U.uC, c);
+  gl.uniform1i(U.uAxes, state.axes ? 1 : 0);
+
+  const cams = [];
+
+  for (const p of panels) {
+    const orbs = isGrid ? [p.orb] : state.sel.slice(0, 5);
+    const n = orbs.length;
+
+    let rmax = 0;
+    for (const o of orbs) rmax = Math.max(rmax, rmaxFor(o, c));
+    const fitR = isGrid ? rmaxCommon : rmax;
+
+    const dist = fitDist(fitR, p.w, p.h, isGrid ? 1.2 : 1.32) / state.zoom;
+    const cam = camera(dist);
+
+    const cp = new Float32Array(15), cn = new Float32Array(15);
+    const ids = new Int32Array(5);
+    for (let i = 0; i < 5; i++) {
+      const o = orbs[Math.min(i, n - 1)];
+      ids[i] = o;
+      let P, N;
+      if (n === 1) {
+        P = state.phase ? PHASE_P : MONO_P;
+        N = state.phase ? PHASE_N : MONO_N;
+      } else {
+        P = PALETTE[o].p;
+        N = state.phase ? PALETTE[o].n : PALETTE[o].p;
+      }
+      cp[i * 3] = P[0]; cp[i * 3 + 1] = P[1]; cp[i * 3 + 2] = P[2];
+      cn[i * 3] = N[0]; cn[i * 3 + 1] = N[1]; cn[i * 3 + 2] = N[2];
+    }
+
+    gl.viewport(p.x, H - p.y - p.h, p.w, p.h);
+    gl.scissor(p.x, H - p.y - p.h, p.w, p.h);
+    gl.uniform2f(U.uRes, p.w, p.h);
+    gl.uniform2f(U.uOrigin, p.x, H - p.y - p.h);
+    gl.uniform3f(U.uCamPos, cam.pos[0], cam.pos[1], cam.pos[2]);
+    gl.uniformMatrix3fv(U.uCam, false, new Float32Array(
+      [...cam.right, ...cam.up, ...cam.fwd]
+    ));
+    gl.uniform1f(U.uFocal, 0.5 * p.h / Math.tan(FOV / 2));
+    gl.uniform1f(U.uBound, rmax * 1.12);
+    gl.uniform1f(U.uAxisLen, rmax * 1.08);
+    gl.uniform1i(U.uN, n);
+    gl.uniform1iv(U.uOrbs, ids);
+    gl.uniform3fv(U.uColP, cp);
+    gl.uniform3fv(U.uColN, cn);
+    gl.uniform1f(U.uAlpha, n === 1 ? 1.0 : (n === 2 ? 0.74 : 0.40));
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    cams.push({ rect: p, orbs, cam, focal: 0.5 * p.h / Math.tan(FOV / 2), rmax });
+  }
+
+  gl.disable(gl.SCISSOR_TEST);
+  drawOverlay(cams, panels);
+}
+
+/* ------------------------------------------------------------------ *
+ *  文字标注（画在 2D 叠加层，导出时一起合成）
+ * ------------------------------------------------------------------ */
+function setFont(size, weight) {
+  ctx.font = `${weight || 400} ${size}px ${FONT}`;
+}
+
+function drawFormula(x, y, size, color, sub) {
+  setFont(size * 0.98, 500);
+  ctx.fillStyle = color;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("d", x, y);
+  const w = ctx.measureText("d").width;
+  setFont(size * 0.60, 500);
+  ctx.fillText(sub, x + w + size * 0.04, y + size * 0.17);
+  return w + size * 0.04 + ctx.measureText(sub).width;
+}
+
+function project(pt, cam, focal, rect) {
+  const v = [pt[0] - cam.pos[0], pt[1] - cam.pos[1], pt[2] - cam.pos[2]];
+  const x = v[0]*cam.right[0] + v[1]*cam.right[1] + v[2]*cam.right[2];
+  const y = v[0]*cam.up[0]    + v[1]*cam.up[1]    + v[2]*cam.up[2];
+  const z = v[0]*cam.fwd[0]   + v[1]*cam.fwd[1]   + v[2]*cam.fwd[2];
+  if (z <= 0.01) return null;
+  return {
+    x: rect.x + rect.w / 2 + (x / z) * focal,
+    y: rect.y + rect.h / 2 - (y / z) * focal,
+    z,
+  };
+}
+
+function drawOverlay(cams, panels) {
+  ctx.clearRect(0, 0, W, H);
+  const grid = state.orb === "grid";
+
+  for (const item of cams) {
+    const rect = item.rect;
+    const s = rect.w;
+
+    if (grid) {
+      ctx.strokeStyle = "rgba(255,255,255,0.055)";
+      ctx.lineWidth = Math.max(1, W * 0.0012);
+      ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
+    }
+
+    // 坐标轴字母
+    if (state.axes) {
+      const L = item.rmax * 1.08 * 1.075;
+      const pts = [[L, 0, 0, "x"], [0, L, 0, "y"], [0, 0, L, "z"]];
+      const fs = grid ? s * 0.052 : s * 0.036;
+      setFont(fs, 500);
+      ctx.fillStyle = "rgba(196,206,224,0.92)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const [px, py, pz, ch] of pts) {
+        const q = project([px, py, pz], item.cam, item.focal, rect);
+        if (q) ctx.fillText(ch, q.x, q.y);
+      }
+      ctx.textAlign = "left";
+    }
+
+    // 标题 / 说明
+    const pad = s * 0.045;
+    if (grid) {
+      const o = ORBS[item.orbs[0]];
+      const fs = Math.max(11, s * 0.058);
+      ctx.shadowColor = "rgba(0,0,0,0.75)";
+      ctx.shadowBlur = fs * 0.6;
+      drawFormula(rect.x + pad, rect.y + pad + fs * 0.82, fs, "#eef3fb", o.sub);
+      setFont(fs * 0.50, 400);
+      ctx.fillStyle = "rgba(150,162,184,0.95)";
+      ctx.fillText(o.short, rect.x + pad, rect.y + pad + fs * 1.62);
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+    } else if (item.orbs.length === 1) {
+      const o = ORBS[item.orbs[0]];
+      const fs = Math.max(16, s * 0.052);
+      ctx.shadowColor = "rgba(0,0,0,0.75)";
+      ctx.shadowBlur = fs * 0.55;
+      drawFormula(rect.x + pad, rect.y + pad + fs * 0.80, fs, "#eef3fb", o.sub);
+      setFont(fs * 0.40, 400);
+      ctx.fillStyle = "rgba(172,184,206,0.97)";
+      ctx.fillText(o.desc, rect.x + pad, rect.y + pad + fs * 1.62);
+      ctx.fillStyle = "rgba(132,144,166,0.97)";
+      ctx.fillText(o.nodal, rect.x + pad, rect.y + pad + fs * 2.12);
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+
+      // 图例
+      const ly = rect.y + rect.h - pad;
+      const lfs = fs * 0.36;
+      setFont(lfs, 400);
+      ctx.fillStyle = "rgba(255,107,94,0.95)";
+      ctx.beginPath(); ctx.arc(rect.x + pad + lfs * 0.35, ly - lfs * 0.32, lfs * 0.34, 0, 7); ctx.fill();
+      ctx.fillText("ψ > 0", rect.x + pad + lfs * 0.95, ly);
+      const off = ctx.measureText("ψ > 0").width;
+      ctx.fillStyle = "rgba(91,147,255,0.95)";
+      ctx.beginPath(); ctx.arc(rect.x + pad + lfs * 0.35 + off + lfs * 1.6, ly - lfs * 0.32, lfs * 0.34, 0, 7); ctx.fill();
+      ctx.fillText("ψ < 0", rect.x + pad + lfs * 0.95 + off + lfs * 1.6, ly);
+    } else {
+      // 叠加对比图例
+      const fs = Math.max(14, Math.min(s * 0.045, s * 0.062));
+      const y0 = rect.y + pad;
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = fs * 0.5;
+      setFont(fs * 0.92, 500);
+      ctx.fillStyle = "#eef3fb";
+      ctx.fillText("叠加对比", rect.x + pad, y0 + fs * 0.85);
+      setFont(fs * 0.42, 400);
+      ctx.fillStyle = "rgba(150,162,184,0.95)";
+      ctx.fillText("颜色区分轨道 · 同色亮 / 暗 = ψ 正 / 负", rect.x + pad, y0 + fs * 1.52);
+      if (item.orbs.length === 5) {
+        ctx.fillStyle = "rgba(140,190,255,0.9)";
+        ctx.fillText("五个全叠加 ≈ 球形（Σ|ψ|² 与方向无关）", rect.x + pad, y0 + fs * 1.52 + fs * 0.52);
+      }
+
+      let y = y0 + fs * 2.45;
+      for (const oi of item.orbs) {
+        const o = ORBS[oi];
+        const col = PALETTE[oi].p;
+        ctx.fillStyle = `rgb(${Math.round(col[0] * 255)},${Math.round(col[1] * 255)},${Math.round(col[2] * 255)})`;
+        ctx.beginPath();
+        ctx.arc(rect.x + pad + fs * 0.28, y - fs * 0.27, fs * 0.26, 0, 7);
+        ctx.fill();
+        drawFormula(rect.x + pad + fs * 0.72, y, fs * 0.92, "#dfe7f4", o.sub);
+        y += fs * 1.05;
+      }
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  if (grid) {
+    const capH = Math.min(W, H) * 0.055;
+    const fs = Math.max(11, Math.min(W, H) * 0.0165);
+    setFont(fs, 400);
+    ctx.fillStyle = "rgba(126,138,158,0.9)";
+    ctx.textAlign = "center";
+    ctx.fillText("氢原子 3d 轨道 · 五个实轨道（l = 2，m = −2…+2）· 红 ψ>0　蓝 ψ<0",
+                 W / 2, H - capH * 0.40);
+    ctx.textAlign = "left";
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ *  UI
+ * ------------------------------------------------------------------ */
+const orbBtns = document.getElementById("orbBtns");
+const gridBtn = document.createElement("button");
+gridBtn.className = "pill wide";
+gridBtn.innerHTML = '五个全览<small>同屏并排五个轨道</small>';
+orbBtns.appendChild(gridBtn);
+
+ORBS.forEach((o, i) => {
+  const b = document.createElement("button");
+  b.className = "pill";
+  b.innerHTML = `d<sub>${o.sub}</sub>`;
+  b.dataset.orb = String(i);
+  orbBtns.appendChild(b);
+});
+
+function syncUI() {
+  [...orbBtns.querySelectorAll(".pill")].forEach((b) => {
+    const v = b.dataset.orb;
+    const on = (v === undefined)
+      ? state.orb === "grid"
+      : (state.orb === "orb" && state.sel.includes(Number(v)));
+    b.classList.toggle("on", on);
+  });
+  document.getElementById("iso").value = String(Math.round(state.iso * 100));
+  document.getElementById("isoVal").textContent = state.iso.toFixed(2);
+  document.getElementById("swPhase").classList.toggle("on", state.phase);
+  document.getElementById("swAxes").classList.toggle("on", state.axes);
+  document.getElementById("swAuto").classList.toggle("on", state.auto);
+  const hint = document.getElementById("selHint");
+  if (hint) hint.textContent = state.orb === "grid"
+    ? "点击轨道查看单个 / 叠加"
+    : `已选 ${state.sel.length} 个轨道` + (state.sel.length > 1 ? "（叠加对比）" : "");
+}
+
+// 点轨道：加入 / 移出叠加；至少保留一个
+function toggleOrb(i) {
+  const k = state.sel.indexOf(i);
+  if (k >= 0) {
+    if (state.sel.length === 1) { state.orb = "orb"; syncUI(); dirty = true; return; }
+    state.sel.splice(k, 1);
+  } else {
+    state.sel.push(i);
+    state.sel.sort((a, b) => a - b);
+  }
+  state.orb = "orb";
+  syncUI(); dirty = true;
+}
+
+function pickOrb(v) {
+  if (v === "grid") { state.orb = "grid"; }
+  else { state.sel = [v]; state.orb = "orb"; }
+  syncUI(); dirty = true;
+}
+
+orbBtns.addEventListener("click", (e) => {
+  const b = e.target.closest(".pill");
+  if (!b) return;
+  if (b.dataset.orb === undefined) pickOrb("grid");
+  else toggleOrb(Number(b.dataset.orb));
+});
+
+document.getElementById("iso").addEventListener("input", (e) => {
+  state.iso = Number(e.target.value) / 100;
+  document.getElementById("isoVal").textContent = state.iso.toFixed(2);
+  dirty = true;
+});
+
+const toggle = (id, key) => {
+  document.getElementById(id).addEventListener("click", () => {
+    state[key] = !state[key];
+    syncUI(); dirty = true;
+  });
+};
+toggle("swPhase", "phase");
+toggle("swAxes", "axes");
+toggle("swAuto", "auto");
+
+document.querySelectorAll("[data-view]").forEach((b) => {
+  b.addEventListener("click", () => {
+    const v = b.dataset.view;
+    if (v === "obl") { state.yaw = 1.0; state.pitch = 0.30; }
+    if (v === "z")   { state.yaw = 0.0;  state.pitch = 0.002; }
+    if (v === "x")   { state.yaw = 1.5708; state.pitch = 0.05; }
+    if (v === "reset") { state.zoom = 1; state.yaw = 1.0; state.pitch = 0.30; state.iso = 0.36; syncUI(); }
+    dirty = true;
+  });
+});
+
+/* 拖拽 / 缩放 */
+let drag = null;
+stage.addEventListener("pointerdown", (e) => {
+  if (EXPORT) return;
+  drag = { x: e.clientX, y: e.clientY, yaw: state.yaw, pitch: state.pitch };
+  stage.setPointerCapture(e.pointerId);
+  stage.classList.add("dragging");
+});
+stage.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const k = 0.008;
+  state.yaw = drag.yaw - (e.clientX - drag.x) * k;
+  state.pitch = Math.max(-1.45, Math.min(1.45, drag.pitch + (e.clientY - drag.y) * k));
+  dirty = true;
+});
+const endDrag = (e) => {
+  drag = null;
+  stage.classList.remove("dragging");
+  try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+};
+stage.addEventListener("pointerup", endDrag);
+stage.addEventListener("pointercancel", endDrag);
+
+stage.addEventListener("wheel", (e) => {
+  if (EXPORT) return;
+  e.preventDefault();
+  state.zoom = Math.max(0.42, Math.min(3.2, state.zoom * Math.exp(-e.deltaY * 0.0012)));
+  dirty = true;
+}, { passive: false });
+
+window.addEventListener("keydown", (e) => {
+  if (e.key >= "1" && e.key <= "5") { pickOrb(Number(e.key) - 1); return; }
+  if (e.key === "g" || e.key === "G") { pickOrb("grid"); return; }
+  if (e.code === "Space") { e.preventDefault(); state.auto = !state.auto; syncUI(); return; }
+  if (e.key === "r" || e.key === "R") {
+    state.zoom = 1; state.yaw = 1.0; state.pitch = 0.30; state.iso = 0.36;
+    syncUI(); dirty = true;
+  }
+});
+
+/* ------------------------------------------------------------------ *
+ *  导出 PNG
+ * ------------------------------------------------------------------ */
+function compose() {
+  const tmp = document.createElement("canvas");
+  tmp.width = W; tmp.height = H;
+  const g = tmp.getContext("2d");
+  g.drawImage(glc, 0, 0);
+  g.drawImage(ovc, 0, 0);
+  return tmp;
+}
+
+document.getElementById("save").addEventListener("click", () => {
+  const tag = state.orb === "grid" ? "all"
+    : (state.sel.length === 1 ? ORBS[state.sel[0]].sub.replace("²", "2") : "compare");
+  const name = "d-orbital-" + tag + ".png";
+  render();
+  compose().toBlob((blob) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    setStatus("已保存 " + name);
+  }, "image/png");
+});
+
+function setStatus(t) {
+  const el = document.getElementById("status");
+  if (el) el.textContent = t;
+}
+
+/* ------------------------------------------------------------------ *
+ *  主循环
+ * ------------------------------------------------------------------ */
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (state.auto) { state.yaw += dt * 0.22; dirty = true; }
+  if (dirty) { render(); dirty = false; }
+  requestAnimationFrame(loop);
+}
+
+/* 启动 */
+function boot() {
+  if (EXPORT) {
+    document.body.classList.add("export");
+    W = Math.max(200, Number(params.get("w")) || 1400);
+    H = Math.max(200, Number(params.get("h")) || W);
+    glc.width = W; glc.height = H; ovc.width = W; ovc.height = H;
+    const orb = params.get("orb");
+    if (orb === "grid" || orb === null) { state.orb = "grid"; }
+    else {
+      state.orb = "orb";
+      state.sel = orb.split(",").map((x) => Number(x)).filter((x) => x >= 0 && x < 5);
+      if (!state.sel.length) state.sel = [0];
+    }
+    if (params.has("iso")) state.iso = Number(params.get("iso"));
+    if (params.has("phase")) state.phase = params.get("phase") === "1";
+    if (params.has("axes")) state.axes = params.get("axes") === "1";
+    if (params.has("yaw")) state.yaw = Number(params.get("yaw"));
+    if (params.has("pitch")) state.pitch = Number(params.get("pitch"));
+    state.auto = false;
+    syncUI();
+    render();
+    setTimeout(async () => {
+      try {
+        render();
+        const blob = await new Promise((r) => compose().toBlob(r, "image/png"));
+        const name = params.get("name") || "shot.png";
+        await fetch("/save?name=" + encodeURIComponent(name), { method: "POST", body: blob });
+        await fetch("/log", { method: "POST", body: JSON.stringify({ exported: name, W, H }) });
+        document.title = "EXPORTED";
+      } catch (err) {
+        fetch("/log", { method: "POST", body: "EXPORT_ERROR " + err });
+      }
+    }, 300);
+    return;
+  }
+
+  resize();
+  new ResizeObserver(resize).observe(stage);
+  if (params.has("orb")) {
+    const o = params.get("orb");
+    if (o === "grid" || o === "") { state.orb = "grid"; }
+    else {
+      state.orb = "orb";
+      state.sel = o.split(",").map((x) => Number(x)).filter((x) => x >= 0 && x < 5);
+      if (!state.sel.length) state.sel = [0];
+    }
+    if (params.has("yaw")) state.yaw = Number(params.get("yaw"));
+    if (params.has("pitch")) state.pitch = Number(params.get("pitch"));
+    if (params.has("iso")) state.iso = Number(params.get("iso"));
+    if (params.has("yaw") || params.has("pitch")) state.auto = false;
+  }
+  syncUI();
+  requestAnimationFrame(loop);
+}
+
+try { boot(); }
+catch (err) {
+  fetch("/log", { method: "POST", body: "BOOT_ERROR " + (err && err.stack || err) });
+  setStatus("出错：" + err.message);
+  throw err;
+}
+</script>
+</body>
+</html>
